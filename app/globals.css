@@ -1,26 +1,78 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --bg: #0d0d0d;
+  --panel: #161616;
+  --border: #333;
+  --text: #e6e6e6;
+  --dim: #8a8a8a;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+html, body {
+  background: var(--bg);
+  color: var(--text);
+  font-size: 16px;
+  line-height: 1.6;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+main {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 32px 20px;
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+h2 {
+  color: var(--dim);
+  font-size: 14px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin: 24px 0 12px;
+}
+
+button {
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--border);
+  padding: 6px 14px;
+  cursor: pointer;
+  font: inherit;
+}
+button:hover { border-color: var(--text); }
+
+input[type="text"], input[type="email"], input[type="password"] {
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--border);
+  padding: 8px 10px;
+  font: inherit;
+  display: block;
+  width: 100%;
+  margin-bottom: 10px;
+  outline: none;
+}
+input:focus { border-color: var(--text); }
+
+label {
+  display: flex !important;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  margin-bottom: 6px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  cursor: pointer;
+}
+
+input[type="checkbox"] {
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border: 1px solid var(--dim);
+  background: transparent;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+input[type="checkbox"]:checked {
+  background: var(--text);
+  border-color: var(--text);
 }
