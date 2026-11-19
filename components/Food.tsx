@@ -20,11 +20,12 @@ export default function Food() {
   const [meal, setMeal] = useState('breakfast')
   const [name, setName] = useState('')
   const [cal, setCal] = useState('')
+  const [dietPlan, setDietPlan] = useState('')
 
   useEffect(() => {
     async function loadOnce() {
-      const { data: s } = await supabase.from('food_settings').select('daily_goal').maybeSingle()
-      if (s) setGoal(s.daily_goal)
+      const { data: s } = await supabase.from('food_settings').select('daily_goal, diet_plan').maybeSingle()
+      if (s) { setGoal(s.daily_goal); setDietPlan(s.diet_plan ?? '') }
       const { data: r } = await supabase
         .from('food_entries')
         .select('name, calories')
@@ -90,7 +91,14 @@ export default function Food() {
     await supabase.from('food_entries').delete().eq('id', id)
   }
 
-  const total = entries.reduce((s, e) => s + e.calories, 0)
+  async function saveDietPlan(value: string) {
+    setDietPlan(value)
+    const { data } = await supabase.auth.getSession()
+    const uid = data.session?.user.id
+    if (uid) await supabase.from('food_settings').upsert({ user_id: uid, diet_plan: value })
+  }
+
+const total = entries.reduce((s, e) => s + e.calories, 0)
   const left = goal - total
   const pct = Math.min(100, Math.round((total / goal) * 100))
   const isToday = day === fmt(new Date())
@@ -183,6 +191,17 @@ export default function Food() {
           </div>
         )
       })}
+      <div style={{ marginTop: 20 }}>
+        <div style={{ color: '#8a8a8a', fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>diet plan</div>
+        <textarea
+          value={dietPlan}
+          onChange={e => setDietPlan(e.target.value)}
+          onBlur={e => saveDietPlan(e.target.value)}
+          placeholder="write your diet instructions…"
+          rows={5}
+          style={{ width: '100%', background: '#161616', border: '1px solid #333', color: '#e6e6e6', padding: 10, resize: 'vertical', fontFamily: 'inherit', fontSize: 13, lineHeight: 1.6 }}
+        />
+      </div>
     </section>
   )
 }

@@ -1,8 +1,10 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
+import Shimmer from '@/components/Shimmer'
 
 type Todo = { id: string; text: string; done: boolean; due_date: string }
+type PinnedList = { id: string; title: string; sections: { id: string; name: string; items: { id: string; text: string; done: boolean }[] }[] }
 
 const pad = (n: number) => String(n).padStart(2, '0')
 const fmt = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
@@ -15,6 +17,8 @@ export default function Planner() {
   const [selected, setSelected] = useState(todayKey)
   const [todos, setTodos] = useState<Todo[]>([])
   const [text, setText] = useState('')
+  const [loading, setLoading] = useState(true)
+  const [pinnedLists, setPinnedLists] = useState<PinnedList[]>([])
 
   const label = new Date(year, month, 1).toLocaleString('en', { month: 'long', year: 'numeric' })
   const daysInMonth = new Date(year, month + 1, 0).getDate()
@@ -32,9 +36,33 @@ export default function Planner() {
         .lt('due_date', end)
         .order('created_at')
       setTodos(data ?? [])
+      setLoading(false)
     }
     load()
   }, [year, month])
+
+  useEffect(() => {
+    async function loadPinned() {
+      const { data: lists } = await supabase.from('lists').select('id, title').eq('pinned', true).order('sort_order')
+      if (!lists?.length) return
+      const listIds = lists.map(l => l.id)
+      const { data: secs } = await supabase.from('list_sections').select('id, list_id, name').order('sort_order')
+      const secIds = (secs ?? []).filter(s => listIds.includes(s.list_id)).map(s => s.id)
+      const { data: its } = await supabase.from('list_items').select('id, section_id, text, done').order('sort_order')
+      const relevantSecs = (secs ?? []).filter(s => listIds.includes(s.list_id))
+      const relevantItems = (its ?? []).filter(i => secIds.includes(i.section_id))
+      setPinnedLists(lists.map(l => ({
+        ...l,
+        sections: relevantSecs
+          .filter(s => s.list_id === l.id)
+          .map(s => ({
+            ...s,
+            items: relevantItems.filter(i => i.section_id === s.id),
+          })),
+      })))
+    }
+    loadPinned()
+  }, [])
 
   function shift(delta: number) {
     const d = new Date(year, month + delta, 1)
@@ -99,6 +127,8 @@ export default function Planner() {
 
   const dayTodos = todos.filter(t => t.due_date === selected)
 
+  if (loading) return <section><h2>planner</h2><Shimmer lines={5} /></section>
+
   return (
     <section>
       <h2>planner</h2>
@@ -133,6 +163,42 @@ export default function Planner() {
           <button onClick={() => remove(t.id)}>x</button>
         </label>
       ))}
+
+      {pinnedLists.length > 0 && (
+        <>
+          <h2 style={{ marginTop: 24 }}>always visible</h2>
+          {pinnedLists.map(l => (
+            <div key={l.id} style={{ background: '#161616', border: '1px solid #333', padding: 12, marginBottom: 10 }}>
+              <div style={{ color: '#e6e6e6', marginBottom: 8, fontWeight: 500 }}>{l.title}</div>
+              {l.sections.map(s => (
+                <div key={s.id} style={{ marginBottom: 10 }}>
+                  {s.name && <div style={{ color: '#8a8a8a', fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>{s.name}</div>}
+                  {s.items.map(i => (
+                    <label key={i.id} style={{ opacity: i.done ? 0.45 : 1 }}>
+                      <input
+                        type="checkbox"
+                        checked={i.done}
+                        onChange={async () => {
+                          const next = !i.done
+                          setPinnedLists(prev => prev.map(pl => pl.id === l.id ? {
+                            ...pl,
+                            sections: pl.sections.map(ps => ps.id === s.id ? {
+                              ...ps,
+                              items: ps.items.map(pi => pi.id === i.id ? { ...pi, done: next } : pi),
+                            } : ps),
+                          } : pl))
+                          await supabase.from('list_items').update({ done: next }).eq('id', i.id)
+                        }}
+                      />
+                      <span style={{ textDecoration: i.done ? 'line-through' : 'none' }}>{i.text}</span>
+                    </label>
+                  ))}
+                </div>
+              ))}
+            </div>
+          ))}
+        </>
+      )}
     </section>
   )
 }

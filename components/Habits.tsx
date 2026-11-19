@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
+import Shimmer from '@/components/Shimmer'
 
 type Habit = { id: string; name: string }
 
@@ -24,6 +25,7 @@ function streak(dates: Set<string>, from: string) {
 export default function Habits({ date, onChange }: { date: string; onChange: () => void }) {
   const [habits, setHabits] = useState<Habit[]>([])
   const [logs, setLogs] = useState<Record<string, Set<string>>>({})
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     async function load() {
@@ -43,6 +45,7 @@ export default function Habits({ date, onChange }: { date: string; onChange: () 
       })
       setHabits(h ?? [])
       setLogs(map)
+      setLoading(false)
     }
     load()
   }, [])
@@ -58,6 +61,8 @@ export default function Habits({ date, onChange }: { date: string; onChange: () 
       .upsert({ habit_id: id, log_date: date, done: !wasDone }, { onConflict: 'habit_id,log_date' })
     onChange()
   }
+
+  if (loading) return <section><h2>habits — {date}</h2><Shimmer lines={5} /></section>
 
   return (
     <section>
