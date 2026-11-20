@@ -57,7 +57,7 @@ export default function Lists() {
     const { data } = await supabase
       .from('lists')
       .insert({ title, sort_order: order })
-      .select('id, title, note, priority, status, sort_order')
+      .select('id, title, note, priority, status, sort_order, pinned')
       .single()
     if (data) {
       setLists(prev => [...prev, data])
